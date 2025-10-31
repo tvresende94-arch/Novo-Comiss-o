@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Vendedores - Controle de Vendas{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                ➕ Cadastrar Novo Vendedor
+            </div>
+            <div class="card-body">
+                <form id="formVendedor">
+                    <div class="mb-3">
+                        <label for="nome" class="form-label">Nome do Vendedor</label>
+                        <input type="text" class="form-control" id="nome" name="nome" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="comissao" class="form-label">Comissão (%)</label>
+                        <input type="number" class="form-control" id="comissao" name="comissao" min="0" max="100" step="0.1" required>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Cadastrar Vendedor</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div id="alertContainer"></div>
+    </div>
+</div>
+
+<!-- Tabela de Vendedores -->
+<div class="card">
+    <div class="card-header">
+        👥 Vendedores Cadastrados
+    </div>
+    <div class="card-body">
+        {% if vendedores %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Comissão (%)</th>
+                            <th>Total Vendido</th>
+                            <th>Total Comissão</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for vendedor in vendedores %}
+                            <tr>
+                                <td><strong>{{ vendedor.nome }}</strong></td>
+                                <td>{{ "%.2f"|format(vendedor.comissao_percentual) }}%</td>
+                                <td>R$ {{ "%.2f"|format(vendedor.total_vendido) }}</td>
+                                <td>R$ {{ "%.2f"|format(vendedor.total_comissao) }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted text-center">Nenhum vendedor cadastrado</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('formVendedor').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const nome = document.getElementById('nome').value;
+        const comissao = parseFloat(document.getElementById('comissao').value);
+        
+        fetch('/api/vendedor/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                nome: nome,
+                comissao: comissao
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const alertContainer = document.getElementById('alertContainer');
+            if (data.success) {
+                alertContainer.innerHTML = `<div class="alert alert-success alert-dismissible fade show">${data.message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+                document.getElementById('formVendedor').reset();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                alertContainer.innerHTML = `<div class="alert alert-danger alert-dismissible fade show">${data.message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            document.getElementById('alertContainer').innerHTML = `<div class="alert alert-danger alert-dismissible fade show">Erro ao cadastrar vendedor<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Clientes - Controle de Vendas{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                ➕ Cadastrar Novo Cliente
+            </div>
+            <div class="card-body">
+                <form id="formCliente">
+                    <div class="mb-3">
+                        <label for="nome" class="form-label">Nome do Cliente</label>
+                        <input type="text" class="form-control" id="nome" name="nome" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="telefone" class="form-label">Telefone</label>
+                        <input type="tel" class="form-control" id="telefone" name="telefone" placeholder="(11) 99999-9999">
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Cadastrar Cliente</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div id="alertContainer"></div>
+    </div>
+</div>
+
+<!-- Tabela de Clientes -->
+<div class="card">
+    <div class="card-header">
+        📋 Clientes Cadastrados
+    </div>
+    <div class="card-body">
+        {% if clientes %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Telefone</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cliente in clientes %}
+                            <tr>
+                                <td><strong>{{ cliente.nome }}</strong></td>
+                                <td>{{ cliente.telefone if cliente.telefone else '-' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted text-center">Nenhum cliente cadastrado</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('formCliente').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const nome = document.getElementById('nome').value;
+        const telefone = document.getElementById('telefone').value;
+        
+        fetch('/api/cliente/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                nome: nome,
+                telefone: telefone
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const alertContainer = document.getElementById('alertContainer');
+            if (data.success) {
+                alertContainer.innerHTML = `<div class="alert alert-success alert-dismissible fade show">${data.message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+                document.getElementById('formCliente').reset();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                alertContainer.innerHTML = `<div class="alert alert-danger alert-dismissible fade show">${data.message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            document.getElementById('alertContainer').innerHTML = `<div class="alert alert-danger alert-dismissible fade show">Erro ao cadastrar cliente<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+        });
+    });
+</script>
+{% endblock %}

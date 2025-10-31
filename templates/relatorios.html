@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Relatórios - Controle de Vendas{% endblock %}
+
+{% block content %}
+<!-- Filtro -->
+<div class="card mb-4">
+    <div class="card-header">
+        🔍 Filtrar por Período
+    </div>
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-6">
+                <label for="mes_ano" class="form-label">Mês/Ano (AAAA-MM)</label>
+                <input type="text" class="form-control" id="mes_ano" name="mes_ano" value="{{ mes_ano }}" placeholder="2025-10">
+            </div>
+            <div class="col-md-6 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+                <a href="/relatorios" class="btn btn-secondary">Limpar Filtro</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Resumo -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="summary-card">
+            <h5>Total Vendido</h5>
+            <div class="amount">R$ {{ "%.2f"|format(total_vendido) }}</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="summary-card">
+            <h5>Total de Comissões</h5>
+            <div class="amount">R$ {{ "%.2f"|format(total_comissoes) }}</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="summary-card">
+            <h5>Melhor Vendedor</h5>
+            <div class="amount" style="font-size: 1.2rem;">
+                {% if ranking %}
+                    {{ ranking[0][0] }}
+                {% else %}
+                    -
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ranking -->
+{% if ranking %}
+<div class="card mb-4">
+    <div class="card-header">
+        🏆 Ranking de Vendedores
+    </div>
+    <div class="card-body">
+        {% for vendedor, valor in ranking %}
+            <div class="ranking-item">
+                <div class="ranking-position">
+                    <div class="ranking-badge {% if loop.index == 2 %}second{% elif loop.index == 3 %}third{% endif %}">
+                        {{ loop.index }}
+                    </div>
+                    <div class="ranking-name">{{ vendedor }}</div>
+                </div>
+                <div class="ranking-value">R$ {{ "%.2f"|format(valor) }}</div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Histórico de Vendas -->
+<div class="card">
+    <div class="card-header">
+        📊 Histórico de Vendas
+    </div>
+    <div class="card-body">
+        {% if vendas %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Data</th>
+                            <th>Vendedor</th>
+                            <th>Cliente</th>
+                            <th>Valor</th>
+                            <th>Comissão (%)</th>
+                            <th>Comissão (R$)</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for venda in vendas %}
+                            <tr>
+                                <td>{{ venda.id }}</td>
+                                <td>{{ venda.data }}</td>
+                                <td>{{ venda.vendedor_nome }}</td>
+                                <td>{{ venda.cliente_nome }}</td>
+                                <td>R$ {{ "%.2f"|format(venda.valor) }}</td>
+                                <td>{{ "%.2f"|format(venda.comissao_aplicada) }}%</td>
+                                <td>R$ {{ "%.2f"|format(venda.valor_comissao) }}</td>
+                                <td>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteVenda({{ venda.id }})">Excluir</button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-3">
+                <a href="/exportar" class="btn btn-success">📥 Exportar para CSV</a>
+            </div>
+        {% else %}
+            <p class="text-muted text-center">Nenhuma venda registrada neste período</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function deleteVenda(vendaId) {
+        if (confirm('Tem certeza que deseja excluir esta venda? Esta ação é irreversível e reverterá a comissão do vendedor.')) {
+            fetch(`/api/venda/delete/${vendaId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Erro: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao excluir venda');
+            });
+        }
+    }
+</script>
+{% endblock %}

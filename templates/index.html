@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Painel Inicial - Controle de Vendas{% endblock %}
+
+{% block content %}
+<!-- Header Card -->
+<div class="header-card">
+    <div class="header-title">
+        <h1>📊 Sistema de Comissão</h1>
+        <p>Controle de vendas de todos os vendedores</p>
+    </div>
+    <div class="header-stats">
+        <div class="stat-box">
+            <div class="stat-value">{{ vendas|length }}</div>
+            <div class="stat-label">Total de Vendas</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value">R$ {{ "%.2f"|format(total_geral_vendas) }}</div>
+            <div class="stat-label">Valor Total</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value">R$ {{ "%.2f"|format(total_comissoes_mes) }}</div>
+            <div class="stat-label">Comissão Total</div>
+        </div>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="card mb-4">
+    <div class="card-body" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+        <a href="/vendas" class="btn btn-primary btn-lg">
+            ➕ NOVA VENDA
+        </a>
+        <select class="form-select" style="max-width: 200px;" id="filterStatus">
+            <option value="">Todos os Status</option>
+            <option value="pending">Pendente</option>
+            <option value="completed">Concluído</option>
+        </select>
+        <input type="text" class="form-control" placeholder="Filtrar por vendedor" style="max-width: 300px;" id="filterSeller">
+    </div>
+</div>
+
+<!-- Sales List -->
+<div class="card">
+    <div class="card-header">
+        📋 Lista de Vendas
+    </div>
+    <div class="card-body">
+        {% if vendas %}
+            <div class="sales-list">
+                {% for venda in vendas %}
+                    <div class="sale-item">
+                        <div class="sale-header">
+                            <div class="sale-customer">{{ venda.cliente_nome }}</div>
+                            <span class="sale-status pending">PENDENTE</span>
+                        </div>
+                        <div class="sale-details">
+                            <div class="sale-detail">
+                                <span class="sale-detail-label">Produto</span>
+                                <span class="sale-detail-value">Venda #{{ venda.id }}</span>
+                            </div>
+                            <div class="sale-detail">
+                                <span class="sale-detail-label">Vendedor</span>
+                                <span class="sale-detail-value">{{ venda.vendedor_nome }}</span>
+                            </div>
+                            <div class="sale-detail">
+                                <span class="sale-detail-label">Data da Venda</span>
+                                <span class="sale-detail-value">{{ venda.data }}</span>
+                            </div>
+                            <div class="sale-detail">
+                                <span class="sale-detail-label">Valor da Venda</span>
+                                <span class="sale-detail-value amount">R$ {{ "%.2f"|format(venda.valor) }}</span>
+                            </div>
+                            <div class="sale-detail">
+                                <span class="sale-detail-label">Comissão ({{ "%.1f"|format(venda.comissao_aplicada) }}%)</span>
+                                <span class="sale-detail-value amount">R$ {{ "%.2f"|format(venda.valor_comissao) }}</span>
+                            </div>
+                        </div>
+                        <div class="sale-actions">
+                            <button class="btn btn-warning btn-sm" onclick="editVenda({{ venda.id }}, '{{ venda.vendedor_nome }}', '{{ venda.cliente_nome }}', {{ venda.valor }}, {{ venda.comissao_aplicada }})">
+                                ✏️ EDITAR
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteVenda({{ venda.id }})">
+                                🗑️ EXCLUIR
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted text-center" style="padding: 2rem;">Nenhuma venda registrada</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">Editar Venda</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="editVendaId">
+                    <div class="mb-3">
+                        <label for="editVendedor" class="form-label">Vendedor</label>
+                        <input type="text" class="form-control" id="editVendedor" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCliente" class="form-label">Cliente</label>
+                        <input type="text" class="form-control" id="editCliente" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editValor" class="form-label">Valor da Venda (R$)</label>
+                        <input type="number" class="form-control" id="editValor" min="0.01" step="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editComissao" class="form-label">Comissão (%)</label>
+                        <input type="number" class="form-control" id="editComissao" min="0" max="100" step="0.1">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveEdit()">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function deleteVenda(vendaId) {
+        if (confirm('Tem certeza que deseja excluir esta venda? Esta ação é irreversível.')) {
+            fetch(`/api/venda/delete/${vendaId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Erro: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao excluir venda');
+            });
+        }
+    }
+
+    function editVenda(vendaId, vendedor, cliente, valor, comissao) {
+        document.getElementById('editVendaId').value = vendaId;
+        document.getElementById('editVendedor').value = vendedor;
+        document.getElementById('editCliente').value = cliente;
+        document.getElementById('editValor').value = valor;
+        document.getElementById('editComissao').value = comissao;
+        
+        const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+        editModal.show();
+    }
+
+    function saveEdit() {
+        const vendaId = document.getElementById('editVendaId').value;
+        const valor = parseFloat(document.getElementById('editValor').value);
+        const comissao = parseFloat(document.getElementById('editComissao').value);
+        
+        if (!valor || !comissao) {
+            alert('Preencha todos os campos');
+            return;
+        }
+        
+        fetch(`/api/venda/update/${vendaId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                valor: valor,
+                comissao: comissao
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao atualizar venda');
+        });
+    }
+
+    function filterBySeller(value) {
+        // Implementar filtro por vendedor
+        console.log('Filtrar por:', value);
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Registrar Venda - Controle de Vendas{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                ➕ Registrar Nova Venda
+            </div>
+            <div class="card-body">
+                <form id="formVenda">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="vendedor_id" class="form-label">Vendedor</label>
+                            <select class="form-select" id="vendedor_id" name="vendedor_id" required>
+                                <option value="">Selecione um vendedor</option>
+                                {% for vendedor in vendedores %}
+                                    <option value="{{ vendedor.id }}">{{ vendedor.nome }} ({{ "%.1f"|format(vendedor.comissao_percentual) }}%)</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="cliente_id" class="form-label">Cliente</label>
+                            <select class="form-select" id="cliente_id" name="cliente_id" required>
+                                <option value="">Selecione um cliente</option>
+                                {% for cliente in clientes %}
+                                    <option value="{{ cliente.id }}">{{ cliente.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="valor" class="form-label">Valor da Venda (R$)</label>
+                            <input type="number" class="form-control" id="valor" name="valor" min="0.01" step="0.01" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="comissao_manual" class="form-label">Comissão Manual (%) - Opcional</label>
+                            <input type="number" class="form-control" id="comissao_manual" name="comissao_manual" min="0" max="100" step="0.1" placeholder="Deixe em branco para usar a do vendedor">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Data da Venda</label>
+                        <input type="text" class="form-control" id="data" readonly value="{{ now.strftime('%d/%m/%Y') }}">
+                    </div>
+
+                    <button type="submit" class="btn btn-success btn-lg w-100">Registrar Venda</button>
+                </form>
+
+                <div id="alertContainer" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('formVenda').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const vendedor_id = parseInt(document.getElementById('vendedor_id').value);
+        const cliente_id = parseInt(document.getElementById('cliente_id').value);
+        const valor = parseFloat(document.getElementById('valor').value);
+        const comissao_manual = document.getElementById('comissao_manual').value ? parseFloat(document.getElementById('comissao_manual').value) : null;
+        
+        if (!vendedor_id || !cliente_id || !valor) {
+            document.getElementById('alertContainer').innerHTML = `<div class="alert alert-danger alert-dismissible fade show">Preencha todos os campos obrigatórios<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+            return;
+        }
+        
+        fetch('/api/venda/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                vendedor_id: vendedor_id,
+                cliente_id: cliente_id,
+                valor: valor,
+                comissao_manual: comissao_manual
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const alertContainer = document.getElementById('alertContainer');
+            if (data.success) {
+                alertContainer.innerHTML = `<div class="alert alert-success alert-dismissible fade show">${data.message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+                document.getElementById('formVenda').reset();
+                setTimeout(() => window.location.href = '/', 2000);
+            } else {
+                alertContainer.innerHTML = `<div class="alert alert-danger alert-dismissible fade show">${data.message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            document.getElementById('alertContainer').innerHTML = `<div class="alert alert-danger alert-dismissible fade show">Erro ao registrar venda<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+        });
+    });
+</script>
+{% endblock %}
